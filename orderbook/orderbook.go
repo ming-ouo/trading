@@ -69,11 +69,6 @@ func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) {
 	totalPrice = totalPrice.Add(ob.sumTotalPrice(doneOrders))
 	totalPrice = totalPrice.Add(ob.sumTotalPrice(partialOrders))
 
-	for _, v := range doneOrders {
-		subTotalPrice := decimal.NewFromInt(int64(v.Quantity())).Mul(v.TradedAVGPrice)
-		totalPrice.Add(subTotalPrice)
-	}
-
 	// The new order has not been completed
 	// Add to pushQueue
 	if newOrderQTYLeft > 0 {

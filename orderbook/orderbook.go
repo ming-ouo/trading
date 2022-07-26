@@ -78,6 +78,7 @@ func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) {
 		}
 
 		pushQueue.Put(newOrder.OrderKey(), newOrder)
+		return
 	}
 
 	// newOrderQTYLeft == 0

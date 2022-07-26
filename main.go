@@ -33,19 +33,31 @@ func RandStringRunes(n int) string {
 func main() {
 	ob := orderbook.NewOrderBook()
 
-	numOfOrders := 400000
-	numOfOrdersInt64 := int64(numOfOrders) + 1
+	numOfOrders := 500000
+	numOfOrdersInt64 := int64(numOfOrders)
 
-	_, v := track("trading")
+	orders := make([]*orderbook.Order, 0, numOfOrders*2)
 
-	for i := int64(1); i < numOfOrdersInt64; i++ {
+	// pre-create order
+	for i := int64(0); i < numOfOrdersInt64; i++ {
 		newOrder := orderbook.NewOrder(RandStringRunes(5), orderbook.Sell, 10, time.Now().UnixNano(), 0, decimal.NewFromInt(1), decimal.NewFromInt(0))
-		ob.NewLimitPriceOrder(newOrder)
+		orders = append(orders, newOrder)
 	}
 
-	for i := int64(1); i < numOfOrdersInt64; i++ {
-		newOrder := orderbook.NewOrder(RandStringRunes(5), orderbook.Buy, 10, time.Now().UnixNano(), 0, decimal.NewFromInt(i), decimal.NewFromInt(0))
-		ob.NewLimitPriceOrder(newOrder)
+	for i := int64(0); i < numOfOrdersInt64; i++ {
+		newOrder := orderbook.NewOrder(RandStringRunes(5), orderbook.Buy, 10, time.Now().UnixNano(), 0, decimal.NewFromInt(1), decimal.NewFromInt(0))
+		orders = append(orders, newOrder)
+	}
+
+	// Measure execution time
+	_, v := track("trading")
+
+	for i := int64(0); i < numOfOrdersInt64; i++ {
+		ob.NewLimitPriceOrder(orders[i])
+	}
+
+	for i := numOfOrdersInt64; i < numOfOrdersInt64*2; i++ {
+		ob.NewLimitPriceOrder(orders[i])
 	}
 
 	log.Printf("number of trade orders: %d", numOfOrders*2)
@@ -53,6 +65,6 @@ func main() {
 
 	//ob.BuyQueue.DebugKeys()
 	//ob.BuyQueue.DebugValues()
-	//ob.SellQueue.DebugValues()
+	//ob.SellQueue.DebugKeys()
 	//ob.SellQueue.DebugValues()
 }

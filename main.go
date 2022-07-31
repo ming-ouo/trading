@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ming-ouo/trading/orderbook"
+	"github.com/ming-ouo/trading/pkg/orderbook"
 	"github.com/shopspring/decimal"
 	"log"
 	"math/rand"
@@ -31,14 +31,14 @@ func RandStringRunes(n int) string {
 }
 
 func main() {
-	ob := orderbook.NewOrderBook()
-
 	numOfOrders := 500000
 	numOfOrdersInt64 := int64(numOfOrders)
 
+	ob := orderbook.NewOrderBook()
+
+	// pre-create orders
 	orders := make([]*orderbook.Order, 0, numOfOrders*2)
 
-	// pre-create order
 	for i := int64(0); i < numOfOrdersInt64; i++ {
 		newOrder := orderbook.NewOrder(RandStringRunes(5), orderbook.Sell, 10, time.Now().UnixNano(), 0, decimal.NewFromInt(1), decimal.NewFromInt(0))
 		orders = append(orders, newOrder)

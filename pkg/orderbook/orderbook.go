@@ -16,7 +16,7 @@ func NewOrderBook() *OrderBook {
 	}
 }
 
-func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) {
+func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) (decimal.Decimal, []*Order, []*Order) {
 	var popQueue *OrderQueue
 	var pushQueue *OrderQueue
 
@@ -33,7 +33,7 @@ func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) {
 	var popOrderKey *OrderKey
 	var popOrder *Order
 
-	newOrderQTYLeft := newOrder.Quantity()
+	newOrderQTYLeft := newOrder.GetQuantity()
 
 	doneOrders := make([]*Order, 0)
 	partialOrders := make([]*Order, 0)
@@ -41,8 +41,8 @@ func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) {
 	popOrderKey, popOrder = popQueue.Head()
 
 	for newOrderQTYLeft > 0 && !popQueue.Empty() && comparator(popOrder.Price) {
-		popOrderQTY := popOrder.Quantity()
-		newOrderQTY := newOrder.Quantity()
+		popOrderQTY := popOrder.GetQuantity()
+		newOrderQTY := newOrder.GetQuantity()
 
 		if popOrderQTY > newOrderQTY {
 			partialOrders = append(partialOrders, NewOrder(popOrder.Id, popOrder.Action, newOrderQTY, popOrder.TS, getTS(), popOrder.Price, popOrder.Price))
@@ -55,13 +55,14 @@ func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) {
 
 		// popOrder has completed
 		ob.removeOrder(popOrderKey, popOrder)
+		popOrder.SetTradedAVGPrice(popOrder.Price)
 		doneOrders = append(doneOrders, popOrder)
-		newOrderQTYLeft -= popOrder.Quantity()
+		newOrderQTYLeft -= popOrder.GetQuantity()
 		popOrderKey, popOrder = popQueue.Head()
 	}
 
 	newOrder.SetQuantity(newOrderQTYLeft)
-	completedNewOrder := newOrder.Quantity() - newOrderQTYLeft
+	completedNewOrder := newOrder.GetQuantity() - newOrderQTYLeft
 
 	totalPrice := decimal.NewFromInt(0)
 
@@ -78,20 +79,22 @@ func (ob *OrderBook) NewLimitPriceOrder(newOrder *Order) {
 		}
 
 		pushQueue.Put(newOrder.OrderKey(), newOrder)
-		return
+		return totalPrice, partialOrders, doneOrders
 	}
 
 	// newOrderQTYLeft == 0
 	newOrder.SetTradedAVGPrice(totalPrice)
 	doneOrders = append(doneOrders, newOrder)
+
+	return totalPrice, partialOrders, doneOrders
 }
 
 func (ob *OrderBook) sumTotalPrice(oq []*Order) decimal.Decimal {
 	totalPrice := decimal.NewFromInt(0)
 
 	for _, v := range oq {
-		subTotalPrice := decimal.NewFromInt(int64(v.Quantity())).Mul(v.TradedAVGPrice)
-		totalPrice.Add(subTotalPrice)
+		subTotalPrice := decimal.NewFromInt(int64(v.GetQuantity())).Mul(v.TradedAVGPrice)
+		totalPrice = totalPrice.Add(subTotalPrice)
 	}
 
 	return totalPrice

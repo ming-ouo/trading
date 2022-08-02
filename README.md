@@ -29,6 +29,8 @@ docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stream_management
 
 ## Output 說明
 
+Trading Server 會每秒持續印出 server 的簡易資訊，資訊如下：
+
 ```
 2022/08/02 13:34:51 now:  1021181 # 目前總共處理了多少訂單
 2022/08/02 13:34:51 diff: 335894  # 過去一秒內處理了多少訂單
@@ -40,6 +42,8 @@ docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stream_management
 ## 簡易設計說明
 
 ### OrderBook
+
+`pkg/orderbook/*`
 
 `OrderBook` 會有兩個 Queue 分別為 `SellQueue/BuyQueue(封裝為 OrderQueue)`
 
@@ -54,3 +58,23 @@ docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stream_management
 
 這樣可以使用同一套程式碼去處理交易 eg. `NewLimitPriceOrder` 可以同時針對 `Sell/Buy`
 
+### Trading
+
+`services/trading/trading.go`
+
+主要使用 RabbitMQ Streams 作為下單輸入
+
+`handleInputMessageFunc`: 從 Queue 讀出資料後會 `Unmarshal` 然後放到 channel `chWaitTrading` 等待後續處理
+`processTrading`: 理論上要針對 order 的 `Type/Action` 做出相對應的訂單處理
+
+## 簡易 Benchmark
+
+在筆電上簡單進行測試
+
+```
+CPU: Intel(R) Core(TM) i5-1035G4 CPU @ 1.10GHz 4C8T
+Memory: 32 GB
+SSD: XPG SX8200 Pro PCIe Gen3x4 M.2 2280 1TB
+```
+
+- 平均每秒可以處理的 Order 數量：~500,000/s

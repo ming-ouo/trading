@@ -1,6 +1,8 @@
 package orderbook
 
-import "github.com/shopspring/decimal"
+import (
+	"github.com/shopspring/decimal"
+)
 
 type OrderKey struct {
 	TS    int64

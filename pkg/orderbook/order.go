@@ -11,14 +11,21 @@ const (
 	Sell
 )
 
+type OrderType int
+
+const (
+	LimitOrder OrderType = iota
+)
+
 type Order struct {
-	Id             string
-	Action         OrderAction
-	quantity       int
-	TS             int64
-	DoneTS         int64
-	Price          decimal.Decimal
-	TradedAVGPrice decimal.Decimal
+	Id             string          `json:"id"`
+	Type           OrderType       `json:"type"`
+	Action         OrderAction     `json:"action"`
+	Quantity       int             `json:"quantity"`
+	TS             int64           `json:"ts"`
+	DoneTS         int64           `json:"doneTS"`
+	Price          decimal.Decimal `json:"price"`
+	TradedAVGPrice decimal.Decimal `json:"tradedAvgPrice"`
 }
 
 func NewOrder(
@@ -33,7 +40,7 @@ func NewOrder(
 	return &Order{
 		Id:             id,
 		Action:         action,
-		quantity:       quantity,
+		Quantity:       quantity,
 		TS:             ts,
 		DoneTS:         doneTS,
 		Price:          price,
@@ -45,12 +52,12 @@ func (o *Order) OrderKey() *OrderKey {
 	return NewOrderKey(o.TS, o.Price)
 }
 
-func (o *Order) Quantity() int {
-	return o.quantity
+func (o *Order) GetQuantity() int {
+	return o.Quantity
 }
 
 func (o *Order) SetQuantity(nQ int) {
-	o.quantity = nQ
+	o.Quantity = nQ
 }
 
 func (o *Order) SetTradedAVGPrice(p decimal.Decimal) {
@@ -58,5 +65,5 @@ func (o *Order) SetTradedAVGPrice(p decimal.Decimal) {
 }
 
 func (o *Order) Completed() bool {
-	return o.quantity == 0
+	return o.Quantity == 0
 }

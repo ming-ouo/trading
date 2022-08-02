@@ -1,70 +1,45 @@
 package main
 
 import (
-	"github.com/ming-ouo/trading/pkg/orderbook"
-	"github.com/shopspring/decimal"
-	"log"
-	"math/rand"
-	"time"
+	"context"
+	"github.com/ming-ouo/trading/internal/env"
+	"github.com/ming-ouo/trading/services/trading"
+	"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/stream"
 )
 
-func track(msg string) (string, time.Time) {
-	return msg, time.Now()
-}
-
-func duration(msg string, start time.Time) {
-	log.Printf("%v: %v\n", msg, time.Since(start))
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func RandStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
-
 func main() {
-	numOfOrders := 500000
-	numOfOrdersInt64 := int64(numOfOrders)
+	env.Init()
 
-	ob := orderbook.NewOrderBook()
+	envOptions := stream.NewEnvironmentOptions().
+		SetHost(env.RabbitMQHost).
+		SetPort(env.RabbitMQPort).
+		SetUser(env.RabbitMQUser).
+		SetPassword(env.RabbitMQPassword)
 
-	// pre-create orders
-	orders := make([]*orderbook.Order, 0, numOfOrders*2)
+	inputOptions := stream.NewConsumerOptions().
+		SetConsumerName("my_consumer").                  // set a consumer name
+		SetOffset(stream.OffsetSpecification{}.First()). // start consuming from the beginning
+		SetCRCCheck(false)                               // Disable crc control, increase the performances
 
-	for i := int64(0); i < numOfOrdersInt64; i++ {
-		newOrder := orderbook.NewOrder(RandStringRunes(5), orderbook.Sell, 10, time.Now().UnixNano(), 0, decimal.NewFromInt(1), decimal.NewFromInt(0))
-		orders = append(orders, newOrder)
+	outputOptions := stream.NewProducerOptions().
+		SetSubEntrySize(500).
+		SetCompression(stream.Compression{}.None())
+
+	streamOptions := &stream.StreamOptions{
+		MaxLengthBytes: stream.ByteCapacity{}.GB(4),
 	}
 
-	for i := int64(0); i < numOfOrdersInt64; i++ {
-		newOrder := orderbook.NewOrder(RandStringRunes(5), orderbook.Buy, 10, time.Now().UnixNano(), 0, decimal.NewFromInt(1), decimal.NewFromInt(0))
-		orders = append(orders, newOrder)
+	t := trading.NewTrading(
+		env.InputStreamName,
+		env.OutputStreamName,
+		envOptions,
+		streamOptions,
+		streamOptions,
+		inputOptions,
+		outputOptions)
+
+	err := t.Start(context.TODO())
+	if err != nil {
+		panic(err) // fail fast
 	}
-
-	// Measure execution time
-	_, v := track("trading")
-
-	for i := int64(0); i < numOfOrdersInt64; i++ {
-		ob.NewLimitPriceOrder(orders[i])
-	}
-
-	for i := numOfOrdersInt64; i < numOfOrdersInt64*2; i++ {
-		ob.NewLimitPriceOrder(orders[i])
-	}
-
-	log.Printf("number of trade orders: %d", numOfOrders*2)
-	duration("trading execution time", v)
-
-	//ob.BuyQueue.DebugKeys()
-	//ob.BuyQueue.DebugValues()
-	//ob.SellQueue.DebugKeys()
-	//ob.SellQueue.DebugValues()
 }
